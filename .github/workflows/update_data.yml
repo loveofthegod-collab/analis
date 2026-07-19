@@ -13,10 +13,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Setup Node.js v24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '24'
 
@@ -25,12 +25,13 @@ jobs:
           node -e "
           const fs = require('fs');
           const tickers = [
-            // Semua saham perbankan Indonesia (sudah unik)
+            // Semua saham perbankan Indonesia (Sudah lengkap 46 bank + BANK)
             'BBCA','BMRI','BBRI','BBNI','BRIS','BBTN','ARTO','BTPN','BNGA','BDMN',
-            'PNBN','MEGA','NISP','BTPS','BJBR','BJTM','BBYB','BINA','BSIM','AGRO',
-            'SDRA','BBKP','BACA','DNAR','NOBU','BABP','BVIC','PNBS','MAYA','MASB',
-            'BMAS','BBHI','BGTG','AMAR','AGRS','BKSW','INPC','BBSI','BBMD','BEKS',
-            'BSWD','MCOR','LPPS','PANS','VINS',
+            'PNBN','MEGA','NISP','BTPS','BJBR','BJTM','BBYB','BANK','BINA','BSIM',
+            'AGRO','SDRA','BBKP','BACA','DNAR','NOBU','BABP','BVIC','PNBS','MAYA',
+            'MASB','BMAS','BBHI','BGTG','AMAR','AGRS','BKSW','INPC','BBSI','BBMD',
+            'BEKS','BSWD','MCOR','LPPS','PANS','VINS',
+            
             // 10 saham populer paling ramai transaksi (non‑bank)
             'ASII','TLKM','GOTO','UNTR','INTP','SMGR','KLBF','ICBP','ANTM','EXCL'
           ];
@@ -63,7 +64,7 @@ jobs:
                 }
                 console.log(ticker + ' sukses.');
               } catch (e) {
-                console.log('Gagal fetch ' + ticker + ' karena error: ' + e.message);
+                console.log('Gagal fetch ' + ticker);
               }
               // Delay dinaikkan sedikit ke 200ms agar aman saat proses penarikan data 5 tahun
               await new Promise(resolve => setTimeout(resolve, 200));
