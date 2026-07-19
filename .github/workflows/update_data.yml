@@ -63,7 +63,7 @@ jobs:
                 }
                 console.log(ticker + ' sukses.');
               } catch (e) {
-                console.log('Gagal fetch ' + ticker);
+                console.log('Gagal fetch ' + ticker + ' karena error: ' + e.message);
               }
               // Delay dinaikkan sedikit ke 200ms agar aman saat proses penarikan data 5 tahun
               await new Promise(resolve => setTimeout(resolve, 200));
