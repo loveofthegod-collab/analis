@@ -44,7 +44,7 @@ jobs:
 
             for (const ticker of tickers) {
               try {
-                // Diubah ke range=5y untuk menarik history data selama 5 tahun
+                // Menggunakan range=5y sesuai kebutuhan history data kamu
                 const res = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/' + ticker + '.JK?range=5y&interval=1d');
                 if (!res.ok) continue;
                 const data = await res.json();
@@ -66,7 +66,7 @@ jobs:
               } catch (e) {
                 console.log('Gagal fetch ' + ticker);
               }
-              // Delay dinaikkan sedikit ke 200ms agar aman saat proses penarikan data 5 tahun
+              // Delay bawaan asli kamu tetap dipertahankan
               await new Promise(resolve => setTimeout(resolve, 200));
             }
 
