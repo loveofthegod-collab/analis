@@ -36,6 +36,12 @@ jobs:
             'ASII','TLKM','GOTO','UNTR','INTP','SMGR','KLBF','ICBP','ANTM','EXCL'
           ];
 
+          // INI TAMBAHAN BARU - daftar saham US biar gak ditempel .JK
+        const usTickers = ['AMZN','GOOG','GOOGL','MSFT','META','NVDA','AVGO','AMD'];
+        function getYahooTicker(t){
+          return usTickers.includes(t) ? t : t + '.JK';
+        }
+
           (async () => {
             let masterData = {};
             let allDates = new Set();
