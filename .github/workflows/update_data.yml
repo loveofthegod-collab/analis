@@ -1,4 +1,4 @@
-name: Update Stock Data
+name: Update Stock Data - 48 Indo + 8 US + 10 Populer
 
 on:
   schedule:
@@ -10,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4.2.2
@@ -20,84 +19,79 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Fetch Data from Yahoo Finance
+      - name: Fetch Data from 【entity-Yahoo¦canonical_name=Yahoo】 Finance
         run: |
           node -e "
           const fs = require('fs');
           const tickers = [
-            // Semua saham perbankan Indonesia (Sudah lengkap 46 bank + BANK)
-            'BBCA','BMRI','BBRI','BBNI','BRIS','BBTN','META','BTPN','BNGA','BDMN',
+            'BBCA','BMRI','BBRI','BBNI','BRIS','BBTN','【entity-META¦canonical_name=META】','BTPN','BNGA','BDMN',
             'PNBN','MEGA','NISP','BTPS','BJBR','BJTM','BBYB','BANK','BINA','BSIM',
             'AMZN','SDRA','GOOGL','AVGO','DNAR','NOBU','NVDA','BVIC','PNBS','MAYA',
-            'MASB','BMAS','AMD','BGTG','MSFT','GOOG','BKSW','INPC','BBSI','BBMD',
+            'MASB','BMAS','【entity-AMD¦canonical_name=AMD】','BGTG','MSFT','GOOG','BKSW','INPC','BBSI','BBMD',
             'BEKS','BSWD','MCOR','LPPS','PANS','VINS',
-            
-            // 10 saham populer paling ramai transaksi (non‑bank)
             'ASII','TLKM','GOTO','UNTR','INTP','SMGR','KLBF','ICBP','ANTM','EXCL'
           ];
+          const usTickers = ['AMZN','GOOG','GOOGL','MSFT','【entity-META¦canonical_name=META】','NVDA','AVGO','【entity-AMD¦canonical_name=AMD】'];
+          function getYahooTicker(t){ return usTickers.includes(t) ? t : t + '.JK'; }
+          
+          const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+          const jitter = (b) => b + Math.floor(Math.random()*600);
 
-          // INI TAMBAHAN BARU - daftar saham US biar gak ditempel .JK
-        const usTickers = ['AMZN','GOOG','GOOGL','MSFT','META','NVDA','AVGO','AMD'];
-        function getYahooTicker(t){
-          return usTickers.includes(t) ? t : t + '.JK';
-        }
+          async function getSession(){
+            let cookie='', crumb='';
+            try{
+              const r = await fetch('https://fc.yahoo.com', { headers: { 'User-Agent': 'Mozilla/5.0 Chrome/120.0' }, redirect: 'manual' });
+              const sc = r.headers.get('set-cookie')||'';
+              const m = sc.match(/A3=[^;]+/);
+              cookie = m? m[0] : sc.split(';')[0];
+              if(cookie){
+                const cr = await fetch('https://query1.finance.yahoo.com/v1/test/getcrumb', { headers: { 'User-Agent': 'Mozilla/5.0 Chrome/120.0', 'Cookie': cookie } });
+                if(cr.ok) crumb = (await cr.text()).trim();
+              }
+            }catch(e){}
+            return {cookie, crumb};
+          }
+
+          async function fetchChart(yahooTicker, session, retries=5){
+            let url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + yahooTicker + '?range=5y&interval=1d';
+            if(session.crumb) url += '&crumb=' + encodeURIComponent(session.crumb);
+            for(let attempt=1; attempt<=retries; attempt++){
+              try{
+                const headers = { 'User-Agent': 'Mozilla/5.0 Chrome/120.0', 'Accept': 'application/json', 'Referer': 'https://finance.yahoo.com/quote/' + yahooTicker + '/' };
+                if(session.cookie) headers['Cookie'] = session.cookie;
+                const res = await fetch(url + '&_=' + Date.now(), { headers });
+                if(res.status===429){ await sleep(12000*attempt); continue; }
+                if(res.status===401 || res.status===403){ const ns = await getSession(); session.cookie=ns.cookie; session.crumb=ns.crumb; await sleep(3000); continue; }
+                if(!res.ok) throw new Error('HTTP '+res.status);
+                const json = JSON.parse(await res.text());
+                const result = json.chart?.result?.[0];
+                if(!result?.timestamp) throw new Error('no timestamp');
+                return result;
+              }catch(e){ if(attempt===retries) return null; await sleep(jitter(1500*attempt)); }
+            }
+            return null;
+          }
 
           (async () => {
-            let masterData = {};
-            let allDates = new Set();
-
-            console.log('Memulai sinkronisasi data 5 tahun untuk ' + tickers.length + ' saham...');
-
-            for (const ticker of tickers) {
-              try {
-                // Menggunakan range=5y sesuai kebutuhan history data kamu
-                const yahooTicker = getYahooTicker(ticker);
-const res = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/' + yahooTicker + '?range=5y&interval=1d');
-                if (!res.ok) continue;
-                const data = await res.json();
-                const result = data.chart?.result?.[0];
-                if (!result) continue;
-
-                const timestamps = result.timestamp || [];
-                const closes = result.indicators?.quote?.[0]?.close || [];
-
-                for (let i = 0; i < timestamps.length; i++) {
-                  if (closes[i] !== null && closes[i] !== undefined) {
-                    const dateStr = new Date(timestamps[i] * 1000).toISOString().split('T')[0];
-                    allDates.add(dateStr);
-                    if (!masterData[dateStr]) masterData[dateStr] = {};
-                    masterData[dateStr][ticker] = Math.round(closes[i]);
-                  }
-                }
-                console.log(ticker + ' sukses.');
-              } catch (e) {
-                console.log('Gagal fetch ' + ticker);
-              }
-              // Delay bawaan asli kamu tetap dipertahankan
-              await new Promise(resolve => setTimeout(resolve, 200));
+            const session = await getSession();
+            let masterData = {}; let allDates = new Set(); let failed=[];
+            for(let i=0;i<tickers.length;i++){
+              const ticker = tickers[i];
+              const yahooTicker = getYahooTicker(ticker);
+              console.log('--- ['+(i+1)+'/'+tickers.length+'] '+ticker+' => '+yahooTicker+' ---');
+              const result = await fetchChart(yahooTicker, session, 5);
+              if(!result){ console.log('❌ '+ticker+' GAGAL'); failed.push(ticker); continue; }
+              const ts = result.timestamp||[]; const closes = result.indicators?.quote?.[0]?.close||[]; let cnt=0;
+              for(let j=0;j<ts.length;j++){ if(closes[j]==null) continue; const ds = new Date(ts[j]*1000).toISOString().slice(0,10); allDates.add(ds); if(!masterData[ds]) masterData[ds]={}; masterData[ds][ticker]= usTickers.includes(ticker) ? Math.round(closes[j]*100)/100 : Math.round(closes[j]); cnt++; }
+              console.log('✅ '+ticker+' OK '+cnt);
+              await sleep(jitter(1200)); if((i+1)%8===0){ console.log('😴 rest 5s'); await sleep(5000); }
             }
-
             let sortedDates = Array.from(allDates).sort();
-            let lastPrices = {};
-            tickers.forEach(t => lastPrices[t] = 0);
-
-            let finalHistory = [];
-
-            sortedDates.forEach(dateStr => {
-              let prices = {};
-              tickers.forEach(ticker => {
-                if (masterData[dateStr] && masterData[dateStr][ticker] !== undefined && masterData[dateStr][ticker] !== null) {
-                  prices[ticker] = masterData[dateStr][ticker];
-                  lastPrices[ticker] = masterData[dateStr][ticker];
-                } else {
-                  prices[ticker] = lastPrices[ticker];
-                }
-              });
-              finalHistory.push({ dateStr, prices });
-            });
-
-            fs.writeFileSync('data.json', JSON.stringify({ tickers, history: finalHistory }, null, 2));
-            console.log('data.json berhasil dibuat dengan histori 5 tahun.');
+            let lastPrices={}; tickers.forEach(t=>lastPrices[t]=0); let finalHistory=[];
+            for(const ds of sortedDates){ let prices={}; for(const t of tickers){ if(masterData[ds]?.[t]!=null){ prices[t]=masterData[ds][t]; lastPrices[t]=prices[t]; } else prices[t]=lastPrices[t]; } if(Object.values(prices).some(v=>v!=0)) finalHistory.push({dateStr: ds, prices}); }
+            console.log('📅 Total:', sortedDates.length, 'Failed:', failed.join(',')||'none');
+            fs.writeFileSync('data.json', JSON.stringify({ tickers, history: finalHistory, last_updated: new Date().toISOString() }, null, 2));
+            console.log('🎉 DONE:', finalHistory.length, 'hari');
           })();
           "
 
@@ -106,5 +100,5 @@ const res = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/' + y
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add data.json
-          git commit -m "Automated: Sinkronisasi data 5 tahun untuk bank + 10 saham populer" || exit 0
+          git commit -m "Update: 48 Indo + 8 US + 10 populer $(date +'%Y-%m-%d %H:%M WIB')" || exit 0
           git push
