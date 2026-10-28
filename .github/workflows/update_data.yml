@@ -51,7 +51,8 @@ jobs:
             for (const ticker of tickers) {
               try {
                 // Menggunakan range=5y sesuai kebutuhan history data kamu
-                const res = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/' + ticker + '.JK?range=5y&interval=1d');
+                const yahooTicker = getYahooTicker(ticker);
+const res = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/' + yahooTicker + '?range=5y&interval=1d');
                 if (!res.ok) continue;
                 const data = await res.json();
                 const result = data.chart?.result?.[0];
