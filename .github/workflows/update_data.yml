@@ -8,6 +8,7 @@ on:
 jobs:
   update-json:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:
@@ -19,79 +20,78 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Fetch Data from 【entity-Yahoo¦canonical_name=Yahoo】 Finance
+      - name: Fetch Data from Yahoo Finance
         run: |
           node -e "
           const fs = require('fs');
           const tickers = [
-            'BBCA','BMRI','BBRI','BBNI','BRIS','BBTN','【entity-META¦canonical_name=META】','BTPN','BNGA','BDMN',
+            'BBCA','BMRI','BBRI','BBNI','BRIS','BBTN','META','BTPN','BNGA','BDMN',
             'PNBN','MEGA','NISP','BTPS','BJBR','BJTM','BBYB','BANK','BINA','BSIM',
             'AMZN','SDRA','GOOGL','AVGO','DNAR','NOBU','NVDA','BVIC','PNBS','MAYA',
-            'MASB','BMAS','【entity-AMD¦canonical_name=AMD】','BGTG','MSFT','GOOG','BKSW','INPC','BBSI','BBMD',
+            'MASB','BMAS','AMD','BGTG','MSFT','GOOG','BKSW','INPC','BBSI','BBMD',
             'BEKS','BSWD','MCOR','LPPS','PANS','VINS',
             'ASII','TLKM','GOTO','UNTR','INTP','SMGR','KLBF','ICBP','ANTM','EXCL'
           ];
-          const usTickers = ['AMZN','GOOG','GOOGL','MSFT','【entity-META¦canonical_name=META】','NVDA','AVGO','【entity-AMD¦canonical_name=AMD】'];
+          const usTickers = ['AMZN','GOOGL','AVGO','NVDA','AMD','MSFT','GOOG','META'];
           function getYahooTicker(t){ return usTickers.includes(t) ? t : t + '.JK'; }
-          
           const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-          const jitter = (b) => b + Math.floor(Math.random()*600);
 
-          async function getSession(){
-            let cookie='', crumb='';
-            try{
-              const r = await fetch('https://fc.yahoo.com', { headers: { 'User-Agent': 'Mozilla/5.0 Chrome/120.0' }, redirect: 'manual' });
-              const sc = r.headers.get('set-cookie')||'';
-              const m = sc.match(/A3=[^;]+/);
-              cookie = m? m[0] : sc.split(';')[0];
-              if(cookie){
-                const cr = await fetch('https://query1.finance.yahoo.com/v1/test/getcrumb', { headers: { 'User-Agent': 'Mozilla/5.0 Chrome/120.0', 'Cookie': cookie } });
-                if(cr.ok) crumb = (await cr.text()).trim();
+          async function fetchChart(ticker){
+            const yahooTicker = getYahooTicker(ticker);
+            const bases = [
+              'https://query1.finance.yahoo.com/v8/finance/chart/' + yahooTicker + '?range=5y&interval=1d',
+              'https://query2.finance.yahoo.com/v8/finance/chart/' + yahooTicker + '?range=5y&interval=1d'
+            ];
+            for(let b=0;b<bases.length;b++){
+              for(let attempt=1; attempt<=3; attempt++){
+                try{
+                  const res = await fetch(bases[b], {
+                    headers: {
+                      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+                      'Accept': 'application/json'
+                    }
+                  });
+                  if(res.status===429){
+                    console.log('⏳ 429 '+ticker+' base '+(b+1)+' attempt '+attempt);
+                    await sleep(3000*attempt);
+                    continue;
+                  }
+                  if(!res.ok) throw new Error('HTTP '+res.status);
+                  const json = await res.json();
+                  const result = json.chart?.result?.[0];
+                  if(!result?.timestamp) throw new Error('no timestamp');
+                  return result;
+                }catch(e){
+                  console.log('⚠ '+ticker+' base '+(b+1)+' attempt '+attempt+' fail: '+e.message);
+                  if(attempt===3 && b===bases.length-1) return null;
+                  await sleep(1000*attempt);
+                }
               }
-            }catch(e){}
-            return {cookie, crumb};
-          }
-
-          async function fetchChart(yahooTicker, session, retries=5){
-            let url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + yahooTicker + '?range=5y&interval=1d';
-            if(session.crumb) url += '&crumb=' + encodeURIComponent(session.crumb);
-            for(let attempt=1; attempt<=retries; attempt++){
-              try{
-                const headers = { 'User-Agent': 'Mozilla/5.0 Chrome/120.0', 'Accept': 'application/json', 'Referer': 'https://finance.yahoo.com/quote/' + yahooTicker + '/' };
-                if(session.cookie) headers['Cookie'] = session.cookie;
-                const res = await fetch(url + '&_=' + Date.now(), { headers });
-                if(res.status===429){ await sleep(12000*attempt); continue; }
-                if(res.status===401 || res.status===403){ const ns = await getSession(); session.cookie=ns.cookie; session.crumb=ns.crumb; await sleep(3000); continue; }
-                if(!res.ok) throw new Error('HTTP '+res.status);
-                const json = JSON.parse(await res.text());
-                const result = json.chart?.result?.[0];
-                if(!result?.timestamp) throw new Error('no timestamp');
-                return result;
-              }catch(e){ if(attempt===retries) return null; await sleep(jitter(1500*attempt)); }
             }
             return null;
           }
 
           (async () => {
-            const session = await getSession();
             let masterData = {}; let allDates = new Set(); let failed=[];
+            console.log('Mulai '+tickers.length+' saham...');
             for(let i=0;i<tickers.length;i++){
               const ticker = tickers[i];
-              const yahooTicker = getYahooTicker(ticker);
-              console.log('--- ['+(i+1)+'/'+tickers.length+'] '+ticker+' => '+yahooTicker+' ---');
-              const result = await fetchChart(yahooTicker, session, 5);
+              const yt = getYahooTicker(ticker);
+              console.log('--- ['+(i+1)+'/'+tickers.length+'] '+ticker+' => '+yt+' ---');
+              const result = await fetchChart(ticker);
               if(!result){ console.log('❌ '+ticker+' GAGAL'); failed.push(ticker); continue; }
               const ts = result.timestamp||[]; const closes = result.indicators?.quote?.[0]?.close||[]; let cnt=0;
               for(let j=0;j<ts.length;j++){ if(closes[j]==null) continue; const ds = new Date(ts[j]*1000).toISOString().slice(0,10); allDates.add(ds); if(!masterData[ds]) masterData[ds]={}; masterData[ds][ticker]= usTickers.includes(ticker) ? Math.round(closes[j]*100)/100 : Math.round(closes[j]); cnt++; }
               console.log('✅ '+ticker+' OK '+cnt);
-              await sleep(jitter(1200)); if((i+1)%8===0){ console.log('😴 rest 5s'); await sleep(5000); }
+              await sleep(600);
+              if((i+1)%10===0){ console.log('😴 rest 3s'); await sleep(3000); }
             }
             let sortedDates = Array.from(allDates).sort();
             let lastPrices={}; tickers.forEach(t=>lastPrices[t]=0); let finalHistory=[];
-            for(const ds of sortedDates){ let prices={}; for(const t of tickers){ if(masterData[ds]?.[t]!=null){ prices[t]=masterData[ds][t]; lastPrices[t]=prices[t]; } else prices[t]=lastPrices[t]; } if(Object.values(prices).some(v=>v!=0)) finalHistory.push({dateStr: ds, prices}); }
-            console.log('📅 Total:', sortedDates.length, 'Failed:', failed.join(',')||'none');
+            for(const ds of sortedDates){ let prices={}; for(const t of tickers){ if(masterData[ds]?.[t]!=null){ prices[t]=masterData[ds][t]; lastPrices[t]=prices[t]; } else prices[t]=lastPrices[t]; } finalHistory.push({dateStr: ds, prices}); }
+            console.log('📅 Total tanggal:', sortedDates.length, 'Failed:', failed.join(',')||'none');
             fs.writeFileSync('data.json', JSON.stringify({ tickers, history: finalHistory, last_updated: new Date().toISOString() }, null, 2));
-            console.log('🎉 DONE:', finalHistory.length, 'hari');
+            console.log('🎉 DONE:', finalHistory.length+' hari');
           })();
           "
 
