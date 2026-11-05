@@ -25,7 +25,7 @@ jobs:
           node -e "
           const fs = require('fs');
           const tickers = [
-            'BBCA','BMRI','BBRI','BBNI','BRIS','BBTN','META','BTPN','BNGA','BDMN',
+            'BBCA','BMRI','BBRI','BBNI','PGAS','BBTN','META','BTPN','BNGA','BDMN',
             'PNBN','MEGA','NISP','BTPS','BJBR','BJTM','BBYB','BANK','BINA','BSIM',
             'AMZN','SDRA','GOOGL','AVGO','DNAR','NOBU','NVDA','BVIC','PNBS','MAYA',
             'MASB','BMAS','AMD','BGTG','MSFT','GOOG','BKSW','INPC','BBSI','BBMD',
