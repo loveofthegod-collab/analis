@@ -27,12 +27,12 @@ jobs:
           const tickers = [
             'BBCA','BMRI','BBRI','BBNI','PGAS','BBTN','META','BTPN','BNGA','BDMN',
             'PNBN','MEGA','NISP','BTPS','BJBR','BJTM','BBYB','BANK','BINA','BSIM',
-            'AMZN','SDRA','GOOGL','AVGO','DNAR','NOBU','NVDA','BVIC','PNBS','MAYA',
+            'AMZN','SDRA','GOOGL','AVGO','DNAR','NVDA','BVIC','PNBS','MAYA',
             'MASB','BMAS','AMD','BGTG','MSFT','GOOG','BKSW','INPC','BBSI','BBMD',
             'BEKS','BSWD','MCOR','LPPS','PANS','VINS',
             'ASII','TLKM','GOTO','UNTR','INTP','SMGR','KLBF','ICBP','ANTM','EXCL'
           ];
-          const usTickers = ['AMZN','GOOGL','AVGO','NVDA','AMD','MSFT','GOOG','META'];
+          const usTickers = ['AMZN','ANT','GOOGL','AVGO','NVDA','AMD','MSFT','GOOG','META'];
           function getYahooTicker(t){ return usTickers.includes(t) ? t : t + '.JK'; }
           const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
