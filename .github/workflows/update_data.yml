@@ -1,4 +1,4 @@
-name: Update Stock Data - 47 Indo + 9 US + 10 Populer
+name: Update Stock Data - 46 Indo + 10 US + 10 Populer
 
 on:
   schedule:
@@ -28,11 +28,11 @@ jobs:
             'BBCA','BMRI','BBRI','BBNI','PGAS','BBTN','META','BTPN','BNGA','BDMN',
             'PNBN','MEGA','NISP','BTPS','BJBR','BJTM','BBYB','BANK','BINA','BSIM',
             'AMZN','SDRA','GOOGL','AVGO','DNAR','NVDA','BVIC','PNBS','MAYA',
-            'MASB','BMAS','AMD','BGTG','ANT','MSFT','GOOG','BKSW','INPC','BBSI','BBMD',
+            'MASB','BMAS','AMD','BGTG','ANT','MSFT','ORCL','BKSW','INPC','BBSI','BBMD',
             'BEKS','BSWD','MCOR','LPPS','PANS','VINS',
-            'ASII','TLKM','GOTO','UNTR','INTP','SMGR','KLBF','ICBP','ANTM','EXCL'
+            'ASII','TLKM','AAPL','UNTR','INTP','SMGR','KLBF','ICBP','ANTM','EXCL'
           ];
-          const usTickers = ['AMZN','ANT','GOOGL','AVGO','NVDA','AMD','MSFT','GOOG','META'];
+          const usTickers = ['AMZN','ANT','GOOGL','AVGO','NVDA','AMD','MSFT','AAPL','ORCL','META'];
           function getYahooTicker(t){ return usTickers.includes(t) ? t : t + '.JK'; }
           const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
